@@ -1,31 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '@/lib/db';
-import { ExecuteWorkflowSchema } from '@/lib/schemas';
-import { executeLLMTask, cropImageTask, extractFrameTask } from '@/lib/trigger';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { v4 as uuidv4 } from "uuid";
+import { db } from "@/lib/db";
+import { ExecuteWorkflowSchema } from "@/lib/schemas";
+import { executeLLMTask, cropImageTask, extractFrameTask } from "@/lib/trigger";
 
 interface ExecutionRequest {
   workflowId: string;
   nodes: any[];
   edges: any[];
-  scope?: 'full' | 'partial' | 'single';
+  scope?: "full" | "partial" | "single";
   executedNodeIds?: string[];
 }
 
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
     const body = await request.json();
-    const { workflowId, nodes, edges, scope = 'full', executedNodeIds = [] } = body;
+    const {
+      workflowId,
+      nodes,
+      edges,
+      scope = "full",
+      executedNodeIds = [],
+    } = body;
 
     // Verify user owns this workflow
     const user = await db.user.findUnique({
@@ -34,8 +40,8 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'User not found' },
-        { status: 404 }
+        { success: false, error: "User not found" },
+        { status: 404 },
       );
     }
 
@@ -45,8 +51,8 @@ export async function POST(request: NextRequest) {
 
     if (!workflow || workflow.userId !== user.id) {
       return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
+        { success: false, error: "Workflow not found" },
+        { status: 404 },
       );
     }
 
@@ -58,64 +64,82 @@ export async function POST(request: NextRequest) {
     const triggerTaskIds: Record<string, string> = {};
 
     // Determine which nodes to execute
-    const nodesToExecute = scope === 'full' 
-      ? nodes
-      : scope === 'single'
-      ? nodes.filter(n => executedNodeIds.includes(n.id))
-      : nodes.filter(n => executedNodeIds.includes(n.id));
+    const nodesToExecute =
+      scope === "full"
+        ? nodes
+        : scope === "single"
+          ? nodes.filter((n:any) => executedNodeIds.includes(n.id))
+          : nodes.filter((n:any) => executedNodeIds.includes(n.id));
 
     // Build dependency graph
     const nodeDependencies = buildDependencyGraph(nodes, edges);
 
     // Execute nodes with dependency resolution
-    const executionOrder = topologicalSort(nodesToExecute.map(n => n.id), nodeDependencies);
+    const executionOrder = topologicalSort(
+      nodesToExecute.map((n:any) => n.id),
+      nodeDependencies,
+    );
 
-    let status: 'success' | 'failed' | 'partial' = 'success';
+    let status: "success" | "failed" | "partial" = "success";
     let partialFailures = false;
 
     for (const nodeId of executionOrder) {
-      const node = nodes.find(n => n.id === nodeId);
+      const node = nodes.find((n:any) => n.id === nodeId);
       if (!node) continue;
 
       try {
         nodeLogs[nodeId] = [];
-        
+
         // Log execution start
-        nodeLogs[nodeId].push(`[${new Date().toISOString()}] Starting execution...`);
+        nodeLogs[nodeId].push(
+          `[${new Date().toISOString()}] Starting execution...`,
+        );
 
         // Execute node based on type
         const result = await executeNode(
           node,
           nodeResults,
-          nodeLogs[nodeId]
+          nodeLogs[nodeId],
+          edges,
         );
 
         if (result.success) {
           nodeResults[nodeId] = result.output;
-          nodeLogs[nodeId].push(`[${new Date().toISOString()}] ✅ Completed successfully`);
+          nodeLogs[nodeId].push(
+            `[${new Date().toISOString()}] ✅ Completed successfully`,
+          );
 
           if (result.triggerTaskId) {
             triggerTaskIds[nodeId] = result.triggerTaskId;
           }
         } else {
+          //@ts-ignore
           nodeErrors[nodeId] = result.error;
-          nodeLogs[nodeId].push(`[${new Date().toISOString()}] ❌ Failed: ${result.error}`);
+          nodeLogs[nodeId].push(
+            `[${new Date().toISOString()}] ❌ Failed: ${result.error}`,
+          );
           partialFailures = true;
-          status = 'partial';
+          status = "partial";
         }
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        const errorMsg =
+          error instanceof Error ? error.message : "Unknown error";
         nodeErrors[nodeId] = errorMsg;
-        nodeLogs[nodeId].push(`[${new Date().toISOString()}] ❌ Error: ${errorMsg}`);
+        nodeLogs[nodeId].push(
+          `[${new Date().toISOString()}] ❌ Error: ${errorMsg}`,
+        );
         partialFailures = true;
-        status = 'partial';
+        status = "partial";
       }
     }
 
-    if (!partialFailures && status === 'success') {
-      status = 'success';
-    } else if (partialFailures && Object.keys(nodeErrors).length === nodesToExecute.length) {
-      status = 'failed';
+    if (!partialFailures && status === "success") {
+      status = "success";
+    } else if (
+      partialFailures &&
+      Object.keys(nodeErrors).length === nodesToExecute.length
+    ) {
+      status = "failed";
     }
 
     const endTime = new Date();
@@ -140,7 +164,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      success: status !== 'failed',
+      success: status !== "failed",
       data: {
         executionId: history.id,
         status,
@@ -152,10 +176,10 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[v0] Workflow execution error:', error);
+    console.error("[v0] Workflow execution error:", error);
     return NextResponse.json(
-      { success: false, error: 'Workflow execution failed' },
-      { status: 500 }
+      { success: false, error: "Workflow execution failed" },
+      { status: 500 },
     );
   }
 }
@@ -163,15 +187,15 @@ export async function POST(request: NextRequest) {
 // Build dependency graph from edges
 function buildDependencyGraph(
   nodes: any[],
-  edges: any[]
+  edges: any[],
 ): Record<string, string[]> {
   const graph: Record<string, string[]> = {};
-  
-  nodes.forEach(node => {
+
+  nodes.forEach((node) => {
     graph[node.id] = [];
   });
 
-  edges.forEach(edge => {
+  edges.forEach((edge) => {
     if (!graph[edge.target]) {
       graph[edge.target] = [];
     }
@@ -182,7 +206,10 @@ function buildDependencyGraph(
 }
 
 // Topological sort for execution order
-function topologicalSort(nodeIds: string[], dependencies: Record<string, string[]>): string[] {
+function topologicalSort(
+  nodeIds: string[],
+  dependencies: Record<string, string[]>,
+): string[] {
   const visited = new Set<string>();
   const result: string[] = [];
 
@@ -191,12 +218,12 @@ function topologicalSort(nodeIds: string[], dependencies: Record<string, string[
     visited.add(nodeId);
 
     const deps = dependencies[nodeId] || [];
-    deps.forEach(dep => visit(dep));
+    deps.forEach((dep) => visit(dep));
 
     result.push(nodeId);
   }
 
-  nodeIds.forEach(nodeId => visit(nodeId));
+  nodeIds.forEach((nodeId) => visit(nodeId));
   return result;
 }
 
@@ -204,63 +231,168 @@ function topologicalSort(nodeIds: string[], dependencies: Record<string, string[
 async function executeNode(
   node: any,
   previousResults: Record<string, any>,
-  logs: string[]
-): Promise<{ success: boolean; output?: any; error?: string; triggerTaskId?: string }> {
+  logs: string[],
+  edges?: any[],
+): Promise<{
+  success: boolean;
+  output?: any;
+  error?: string;
+  triggerTaskId?: string;
+}> {
   const { data } = node;
 
   try {
+    // resolve upstream inputs
+    const inputs: Record<string, any[]> = {};
+
+    if (edges) {
+      const incoming = edges.filter((e) => e.target === node.id);
+
+      incoming.forEach((edge) => {
+        const sourceOutput = previousResults[edge.source];
+
+        const port = edge.targetHandle?.replace("input:", "") || "default";
+
+        if (!inputs[port]) {
+          inputs[port] = [];
+        }
+
+        inputs[port].push(sourceOutput);
+      });
+    }
+
     switch (data.nodeType) {
-      case 'text':
-        return { success: true, output: { text: data.content } };
-
-      case 'image_upload':
-        if (!data.uploadedImageUrl) {
-          return { success: false, error: 'No image uploaded' };
-        }
-        return { success: true, output: { imageUrl: data.uploadedImageUrl } };
-
-      case 'video_upload':
-        if (!data.uploadedVideoUrl) {
-          return { success: false, error: 'No video uploaded' };
-        }
-        return { success: true, output: { videoUrl: data.uploadedVideoUrl } };
-
-      case 'llm':
-        logs.push('Triggering Gemini API via Trigger.dev...');
-        // In production, this would actually call Trigger.dev
+      case "text":
         return {
           success: true,
           output: {
-            text: 'LLM response (mock)',
+            text: data.content,
           },
-          triggerTaskId: `trigger-${Date.now()}`,
         };
 
-      case 'crop_image':
-        logs.push('Cropping image via FFmpeg...');
-        // In production, trigger FFmpeg task
+      case "imageUpload":
+        if (!data.uploadedImageUrl) {
+          return {
+            success: false,
+            error: "No image uploaded",
+          };
+        }
+
         return {
           success: true,
-          output: { imageUrl: data.imageUrl },
-          triggerTaskId: `trigger-${Date.now()}`,
+          output: {
+            imageUrl: data.uploadedImageUrl,
+          },
         };
 
-      case 'extract_frame':
-        logs.push('Extracting frame from video...');
-        // In production, trigger FFmpeg task
+      case "videoUpload":
+        if (!data.uploadedVideoUrl) {
+          return {
+            success: false,
+            error: "No video uploaded",
+          };
+        }
+
         return {
           success: true,
-          output: { frameUrl: data.videoUrl },
-          triggerTaskId: `trigger-${Date.now()}`,
+          output: {
+            videoUrl: data.uploadedVideoUrl,
+          },
         };
+
+      case "llm": {
+        logs.push("Executing Gemini via Trigger.dev...");
+
+        const systemPrompt = inputs.system?.[0]?.text || data.systemPrompt;
+
+        const userPrompt = inputs.user?.[0]?.text || data.userMessage;
+
+        const images = inputs.image?.map((img) => img.imageUrl) || [];
+
+        const task = await executeLLMTask.trigger({
+          nodeId: node.id,
+          model: data.model,
+          systemPrompt,
+          userMessage: userPrompt,
+          images,
+        });
+
+        return {
+          success: true,
+          output: {
+            text: task.output,
+          },
+          triggerTaskId: task.id,
+        };
+      }
+
+      case "cropImage": {
+        logs.push("Running cropImage Trigger task...");
+
+        const imageUrl = inputs.image?.[0]?.imageUrl || data.imageUrl;
+
+        if (!imageUrl) {
+          return {
+            success: false,
+            error: "No input image",
+          };
+        }
+
+        const task = await cropImageTask.trigger({
+          nodeId: node.id,
+          imageUrl,
+          xPercent: data.xPercent,
+          yPercent: data.yPercent,
+          widthPercent: data.widthPercent,
+          heightPercent: data.heightPercent,
+        });
+
+        return {
+          success: true,
+          output: {
+            imageUrl: task.output,
+          },
+          triggerTaskId: task.id,
+        };
+      }
+
+      case "extractFrame": {
+        logs.push("Running extractFrame Trigger task...");
+
+        const videoUrl = inputs.video?.[0]?.videoUrl || data.videoUrl;
+
+        if (!videoUrl) {
+          return {
+            success: false,
+            error: "No input video",
+          };
+        }
+
+        const task = await extractFrameTask.trigger({
+          nodeId: node.id,
+          videoUrl,
+          timestamp: data.timestamp,
+        });
+
+        return {
+          success: true,
+          output: {
+            imageUrl: task.output,
+          },
+          triggerTaskId: task.id,
+        };
+      }
 
       default:
-        return { success: false, error: `Unknown node type: ${data.nodeType}` };
+        return {
+          success: false,
+          error: `Unknown node type: ${data.nodeType}`,
+        };
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Execution error',
+      error: error instanceof Error ? error.message : "Execution error",
     };
   }
 }

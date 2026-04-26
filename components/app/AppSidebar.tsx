@@ -103,12 +103,12 @@ const { redirectToSignIn ,} = useClerk();
     </div>
   ) : (
     <button
-      onClick={() =>
+      onClick={() => {
         redirectToSignIn({
           redirectUrl: "/app/home",
-        })
-      }
-      className="w-full text-xs font-medium text-blue-500 hover:text-blue-400 transition"
+        });
+      }}
+      className="w-full text-xs font-medium text-blue-500 hover:text-blue-400 transition cursor-pointer"
     >
       Sign in
     </button>

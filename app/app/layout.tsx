@@ -11,11 +11,11 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   return (
-    <main className={`${inter.className} flex flex-grow min-h-screen`}>
+    <div className={`${inter.className} flex grow min-h-screen`}>
       <AppSidebar />
       <div className="flex-1 overflow-y-auto">
         {children}
       </div>
-    </main>
+    </div>
   );
 }

@@ -1,6 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { Inter } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+});
 import {
   ReactFlow,
   addEdge,
@@ -13,8 +18,6 @@ import {
   EdgeChange,
   Background,
   Controls,
-  MiniMap,
-  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
@@ -24,6 +27,7 @@ import {
   Loader,
   AlertCircle,
   Plus,
+  ChevronDown,
 } from "lucide-react";
 import { TextNode } from "./nodes/TextNode";
 import { ImageUploadNode } from "./nodes/ImageUploadNode";
@@ -34,9 +38,46 @@ import { ExtractFrameNode } from "./nodes/ExtractFrameNode";
 import { LeftSidebar } from "./sidebars/LeftSidebar";
 import { RightSidebar } from "./sidebars/RightSidebar";
 import { useWorkflowStore } from "@/lib/store";
-import { WorkflowNode } from "@/lib/types";
+import { NodeType, WorkflowNode } from "@/types/types";
 import { WorkflowEdge } from "@/types/types";
+const NODE_DEFINITIONS = {
+  text: {
+    category: "text",
+    outputs: [{ id: "text", produces: "text" }],
+  },
 
+  imageUpload: {
+    category: "image",
+    outputs: [{ id: "image", produces: "image" }],
+  },
+
+  videoUpload: {
+    category: "video",
+    outputs: [{ id: "video", produces: "video" }],
+  },
+
+  cropImage: {
+    category: "image",
+    inputs: [{ id: "image", accepts: ["image"] }],
+    outputs: [{ id: "image", produces: "image" }],
+  },
+
+  extractFrame: {
+    category: "image",
+    inputs: [{ id: "video", accepts: ["video"] }],
+    outputs: [{ id: "image", produces: "image" }],
+  },
+
+  llm: {
+    category: "llm",
+    inputs: [
+      { id: "system", accepts: ["text", "llm"] },
+      { id: "user", accepts: ["text", "llm"] },
+      { id: "image", accepts: ["image"] },
+    ],
+    outputs: [{ id: "text", produces: "text" }],
+  },
+};
 const nodeTypes = {
   text: TextNode,
   imageUpload: ImageUploadNode,
@@ -61,7 +102,6 @@ export function CompleteWorkflowEditor({
   initialNodes = [],
   initialEdges = [],
 }: WorkflowEditorProps) {
-  const { getNodes, setNodes, getEdges, setEdges } = useReactFlow();
   
   const setNodesStore = useWorkflowStore((s) => s.setNodes);
 const setEdgesStore = useWorkflowStore((s) => s.setEdges);
@@ -123,13 +163,14 @@ const setWorkflowDescriptionStore = useWorkflowStore((s) => s.setWorkflowDescrip
   );
 
   // Add new node
-  const addNode = useCallback(
+  const addNode1 = useCallback(
     (nodeType: string) => {
       const newNode: Node = {
         id: `${nodeType}-${Date.now()}`,
         data: { label: `${nodeType} Node`, nodeType },
+        
         position: {
-          x: Math.random() * 500,
+          x: Math.random() * 150,
           y: Math.random() * 500,
         },
         type: nodeType,
@@ -141,6 +182,86 @@ const setWorkflowDescriptionStore = useWorkflowStore((s) => s.setWorkflowDescrip
     },
     [nodes]
   );
+
+  const addNode = useCallback(
+  (nodeType: string) => {
+    const nodeDefinitions = {
+      text: {
+        category: "text",
+        inputs: [],
+        outputs: [{ id: "text" }],
+      },
+
+      imageUpload: {
+        category: "image",
+        inputs: [],
+        outputs: [{ id: "image" }],
+      },
+
+      videoUpload: {
+        category: "video",
+        inputs: [],
+        outputs: [{ id: "video" }],
+      },
+
+      cropImage: {
+        category: "image",
+        inputs: [{ id: "image", accepts: ["image"] }],
+        outputs: [{ id: "image" }],
+      },
+
+      extractFrame: {
+        category: "image",
+        inputs: [{ id: "video", accepts: ["video"] }],
+        outputs: [{ id: "image" }],
+      },
+
+      llm: {
+        category: "llm",
+        inputs: [
+          { id: "system", accepts: ["text", "llm"] },
+          { id: "user", accepts: ["text", "llm"] },
+          { id: "image", accepts: ["image"] },
+        ],
+        outputs: [{ id: "text" }],
+      },
+    };
+
+    const definition = nodeDefinitions[nodeType];
+
+    if (!definition) return;
+
+    const newNode: WorkflowNode = {
+      id: `${nodeType}-${Date.now()}`,
+      type: nodeType,
+
+      position: {
+        x: Math.random() * 500,
+        y: Math.random() * 500,
+      },
+
+      data: {
+        label: `${nodeType} Node`,
+        nodeType,
+        definition,
+      },
+    };
+
+    setNodesState((nds) => [...nds, newNode]);
+    setError(null);
+  },
+  []
+);
+
+  // Handle node selection
+  const onSelectionChange = useCallback((changes: any) => {
+    if (changes.nodes && changes.nodes.length > 0) {
+      const selectedNodeIds = changes.nodes.map((node: any) => node.id);
+      setSelectedNodes(selectedNodeIds);
+    } else {
+      setSelectedNodes([]);
+    }
+  }, []);
 
   // Delete selected nodes
   const deleteSelectedNodes = useCallback(() => {
@@ -234,6 +355,26 @@ const addLog = useWorkflowStore((s) => s.addLog);
       setIsExecuting(false);
     }
 }, [nodes, edges, workflowId, clearLogs, addLog]);
+
+
+const [menuOpen, setMenuOpen] = useState(false);
+const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const handler = (e: MouseEvent) => {
+    if (
+      dropdownRef.current &&
+      //@ts-ignore
+      !dropdownRef.current.contains(e.target as Node)
+    ) {
+      setMenuOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handler);
+  return () => document.removeEventListener("mousedown", handler);
+}, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -257,73 +398,113 @@ const addLog = useWorkflowStore((s) => s.addLog);
   }, [saveWorkflow, deleteSelectedNodes, executeWorkflow, selectedNodes]);
 
   return (
-    <div className="h-screen w-full flex flex-grow bg-[#101010] text-white">
-    
+    <div className={`${inter.className} h-screen w-full flex grow bg-[#101010] text-white`}>
         <LeftSidebar onAddNode={addNode}/>
      
 
       {/* Main Canvas */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="border-b border-[#333] bg-[#1a1a1a] px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">{workflowName}</h1>
-            {workflowDescription && (
-              <p className="text-xs text-gray-400">{workflowDescription}</p>
-            )}
+       <div className="px-4 py-2  bg-[#101010] flex items-center gap-4">
+
+  {/* Workflow dropdown trigger */}
+  <div ref={dropdownRef} className="relative z-30">
+
+    <button
+      onClick={() => setMenuOpen(!menuOpen)}
+      className="text-xs px-4 py-3 rounded-md bg-[#1a1a1a]  transition flex items-center gap-2"
+    >
+      <span
+  className={`text-white transition-transform duration-200 ${
+    menuOpen ? "rotate-180" : "rotate-0"
+  }`}
+>
+  <ChevronDown size={11} />
+</span>
+      <span className=" hover:bg-[#404040] px-1.5 py-1 transition rounded-md ">{workflowName}</span>
+    </button>
+
+    {/* POP dropdown */}
+    {menuOpen && (
+      <div className="absolute left-0 mt-2 w-56 bg-[#151515] hover:rounded-lg rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-150 z-50">
+
+        {/* Save */}
+        <button
+          onClick={() => {
+            saveWorkflow();
+            setMenuOpen(false);
+          }}
+          className="w-full flex items-center gap-2 px-4 py-2 text-xs hover:bg-[#222]"
+        >
+          {isSaving ? (
+            <Loader size={14} className="animate-spin" />
+          ) : (
+            <Save size={14} />
+          )}
+          Save workflow
+        </button>
+
+        {/* Execute */}
+        <button
+          onClick={() => {
+            executeWorkflow();
+            setMenuOpen(false);
+          }}
+          disabled={nodes.length === 0}
+          className="w-full flex items-center gap-2 px-4 py-2 text-xs hover:bg-[#222]"
+        >
+          {isExecuting ? (
+            <Loader size={14} className="animate-spin" />
+          ) : (
+            <Play size={14} />
+          )}
+          Run workflow
+        </button>
+
+        {/* Delete selected */}
+        {selectedNodes.length > 0 && (
+          <button
+            onClick={() => {
+              deleteSelectedNodes();
+              setMenuOpen(false);
+            }}
+            className="w-full flex items-center gap-2 px-4 py-2 text-xs hover:bg-[#222] text-red-400"
+          >
+            <Trash2 size={14} />
+            Delete selected nodes
+          </button>
+        )}
+
+        {/* Divider */}
+        <div className="border-t border-[#333] my-1" />
+
+        {/* Description */}
+        {workflowDescription && (
+          <div className="px-4 py-2 text-[10px] text-gray-500">
+            {workflowDescription}
           </div>
+        )}
 
-          <div className="flex items-center gap-3">
-          
+      </div>
+    )}
 
-            {error && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-xs">
-                <AlertCircle size={16} />
-                <span>{error}</span>
-              </div>
-            )}
+  </div>
 
-            {executionStatus && (
-              <div className="text-xs text-green-400">{executionStatus}</div>
-            )}
+  {/* Status indicators */}
+  {executionStatus && (
+    <span className="text-xs text-green-400">
+      {executionStatus}
+    </span>
+  )}
 
-            <button
-              onClick={saveWorkflow}
-              disabled={isSaving}
-              className="p-2 hover:bg-[#333] rounded transition disabled:opacity-50 flex items-center gap-2"
-              title="Save (Ctrl+S)"
-            >
-              {isSaving ? (
-                <Loader size={18} className="animate-spin" />
-              ) : (
-                <Save size={18} />
-              )}
-            </button>
+  {error && (
+    <span className="text-xs text-red-400 flex items-center gap-1">
+      <AlertCircle size={12} />
+      {error}
+    </span>
+  )}
 
-            <button
-              onClick={executeWorkflow}
-              disabled={isExecuting || nodes.length === 0}
-              className="p-2 hover:bg-green-500/20 rounded transition disabled:opacity-50 flex items-center gap-2"
-              title="Execute (Ctrl+Enter)"
-            >
-              {isExecuting ? (
-                <Loader size={18} className="animate-spin" />
-              ) : (
-                <Play size={18} />
-              )}
-            </button>
-
-            {selectedNodes.length > 0 && (
-              <button
-                onClick={deleteSelectedNodes}
-                className="p-2 hover:bg-red-500/20 rounded transition flex items-center gap-2"
-                title="Delete selected (Delete)"
-              >
-                <Trash2 size={18} />
-              </button>
-            )}
-          </div>
-        </header>
+</div>
 
 
         {/* Canvas Area */}
@@ -334,6 +515,7 @@ const addLog = useWorkflowStore((s) => s.addLog);
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onSelectionChange={onSelectionChange}
             nodeTypes={nodeTypes}
             fitView
           >
@@ -371,7 +553,7 @@ const addLog = useWorkflowStore((s) => s.addLog);
 
       {/* Right Sidebar */}
       {showRightSidebar && (
-        <RightSidebar onCollapse={() => setShowRightSidebar(false)} />
+        <RightSidebar />
       )}
     </div>
   );

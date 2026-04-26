@@ -15,7 +15,7 @@ export function TextNode({ data, selected }: any) {
 
   return (
     <div
-      className={`bg-[#1a1a1a] border rounded-lg p-4 min-w-[280px] max-w-sm shadow-lg transition-all ${
+      className={`bg-[#1a1a1a] border rounded-lg p-4 min-w-70 max-w-sm shadow-lg transition-all ${
         selected ? "border-blue-500 border-2" : "border-[#444]"
       } ${data.isExecuting ? "animate-pulse bg-green-500/10" : ""}`}
     >

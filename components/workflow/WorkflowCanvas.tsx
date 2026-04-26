@@ -16,6 +16,7 @@ import { BaseNode } from './BaseNode';
 import { useWorkflowStore } from '@/lib/store';
 import { WorkflowNode, WorkflowEdge } from '@/types/types';
 import { v4 as uuidv4 } from 'uuid';
+import { nodeDefinitions } from '@/lib/nodeDefinitions';
 
 const nodeTypes = {
   default: BaseNode,
@@ -30,7 +31,6 @@ export const WorkflowCanvas: React.FC = () => {
   const setStoreNodes = useWorkflowStore((state) => state.setNodes);
   const setStoreEdges = useWorkflowStore((state) => state.setEdges);
   const addNode = useWorkflowStore((state) => state.addNode);
-  const nodeDefinitions = useWorkflowStore((state) => state.nodeDefinitions);
   const showNodeLibrary = useWorkflowStore((state) => state.showNodeLibrary);
 
   // Sync nodes and edges with store
@@ -79,7 +79,7 @@ export const WorkflowCanvas: React.FC = () => {
     const nodeTypeId = e.dataTransfer.getData('nodeTypeId');
     
     if (!nodeTypeId) return;
-
+    
     const definition = nodeDefinitions.find(def => def.id === nodeTypeId);
     if (!definition) return;
 
@@ -100,7 +100,7 @@ export const WorkflowCanvas: React.FC = () => {
   }, [nodeDefinitions, setNodes]);
 
   return (
-    <div className="w-full h-full" onDragOver={handleDragOver} onDrop={handleDrop}>
+    <div className="w-full h-full" onDragOver={handleDragOver} >
       <ReactFlow
         nodes={nodes}
         edges={edges}

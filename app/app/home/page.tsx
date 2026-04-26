@@ -5,7 +5,7 @@ import HomeBg from '@/public/home-bg.webp'
 
 export default function Page() {
   return (
-    <main  className="bg-[#101010] min-h-screen text-white px-9 pt-14">
+    <div  className="bg-[#101010] min-h-screen text-white px-9 pt-14">
 
       <section className="relative h-[55vh] rounded-xl overflow-hidden flex items-center justify-center">
 
@@ -34,7 +34,7 @@ export default function Page() {
 
       </section>
 
-    </main>
+    </div>
   );
 }
 

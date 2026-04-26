@@ -1,56 +1,118 @@
-import { Node, Edge } from '@xyflow/react';
+import { Node, Edge } from "@xyflow/react";
 
 // Node Types
-export type NodeType = 'text' | 'image_upload' | 'video_upload' | 'llm' | 'crop_image' | 'extract_frame';
-
-// Base node data interface
-export interface BaseNodeData {
-  label: string;
+export type NodeType =
+  | "text"
+  | "image_upload"
+  | "video_upload"
+  | "llm"
+  | "crop_image"
+  | "extract_frame";
+export type NodeCategory = "text" | "image" | "video" | "llm" | "processing";
+export interface OutputType {
+  id: string;
+  label?: string;
+  produces?: NodeCategory;
+}
+export interface InputType {
+  id: string;
+  label?: string;
+  accepts: NodeCategory[];
+}
+export interface BaseNodeData extends Record<string, unknown> {
+  label?: string;
   nodeType: NodeType;
+
+  definition: {
+    category: NodeCategory;
+
+    inputs: InputType[];
+
+    outputs: OutputType[];
+  };
 }
 
 // Text Node
 export interface TextNodeData extends BaseNodeData {
-  nodeType: 'text';
+  nodeType: "text";
   content: string;
+  definition: {
+    category: "text";
+    outputs: [{ id: "text" }];
+    inputs: [];
+  };
 }
 
 // Image Upload Node
 export interface ImageUploadNodeData extends BaseNodeData {
-  nodeType: 'image_upload';
+  nodeType: "image_upload";
   uploadedImageUrl?: string;
   uploadedImageFile?: {
     name: string;
     type: string;
     size: number;
   };
+  definition: {
+    category: "image";
+    outputs: [{ id: "image" }];
+    inputs: [];
+  };
 }
 
 // Video Upload Node
 export interface VideoUploadNodeData extends BaseNodeData {
-  nodeType: 'video_upload';
+  nodeType: "video_upload";
   uploadedVideoUrl?: string;
   uploadedVideoFile?: {
     name: string;
     type: string;
     size: number;
   };
+  definition: {
+    category: "video";
+    inputs: [];
+
+    outputs: [
+      {
+        id: "video";
+        produces: "video";
+      },
+    ];
+  };
 }
 
 // LLM Node
 export interface LLMNodeData extends BaseNodeData {
-  nodeType: 'llm';
+  nodeType: "llm";
   model: string;
   systemPrompt?: string;
   userMessage?: string;
   images?: string[];
   result?: string;
   isExecuting?: boolean;
+  definition: {
+    category: "llm";
+    inputs: [
+      {
+        id: "system";
+        accepts: ["text", "llm"];
+      },
+      {
+        id: "user";
+        accepts: ["text", "llm"];
+      },
+      {
+        id: "image";
+        accepts: ["image"];
+      },
+    ];
+    outputs: [{ id: "text" }];
+  };
 }
 
 // Crop Image Node
 export interface CropImageNodeData extends BaseNodeData {
-  nodeType: 'crop_image';
+  nodeType: "crop_image";
   imageUrl?: string;
   xPercent: number;
   yPercent: number;
@@ -58,18 +120,38 @@ export interface CropImageNodeData extends BaseNodeData {
   heightPercent: number;
   croppedImageUrl?: string;
   isExecuting?: boolean;
+  definition: {
+    category: "image";
+    inputs: [
+      {
+        id: "image";
+        accepts: ["image"];
+      },
+    ];
+    outputs: [{ id: "image" }];
+  };
 }
 
 // Extract Frame Node
 export interface ExtractFrameNodeData extends BaseNodeData {
-  nodeType: 'extract_frame';
+  nodeType: "extract_frame";
   videoUrl?: string;
   timestamp: string | number;
   extractedFrameUrl?: string;
   isExecuting?: boolean;
+  definition: {
+    category: "image";
+    inputs: [
+      {
+        id: "video";
+        accepts: ["video"];
+      },
+    ];
+    outputs: [{ id: "image" }];
+  };
 }
 
-export type NodeData = 
+export type NodeData =
   | TextNodeData
   | ImageUploadNodeData
   | VideoUploadNodeData
@@ -77,18 +159,16 @@ export type NodeData =
   | CropImageNodeData
   | ExtractFrameNodeData;
 
-export interface WorkflowNode extends Node {
-  data: NodeData;
-}
+export type WorkflowNode = Node<NodeData> ;
 
 export interface WorkflowEdge extends Edge {}
 
 // Execution History Types
-export type ExecutionStatus = 'success' | 'failed' | 'running' | 'partial';
-export type ExecutionScope = 'full' | 'partial' | 'single';
+export type ExecutionStatus = "success" | "failed" | "running" | "partial";
+export type ExecutionScope = "full" | "partial" | "single";
 
 export interface NodeExecutionResult {
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   output?: any;
   error?: string;
   startTime: Date;
@@ -125,7 +205,7 @@ export interface TriggerTaskPayload {
 
 export interface TriggerTaskResult {
   nodeId: string;
-  status: 'success' | 'failed';
+  status: "success" | "failed";
   output?: any;
   error?: string;
   taskId: string;
@@ -161,6 +241,6 @@ export interface ExecutionResponse {
     nodeId: string;
     timestamp: string;
     message: string;
-    level: 'info' | 'warning' | 'error' | 'success';
+    level: "info" | "warning" | "error" | "success";
   }>;
 }

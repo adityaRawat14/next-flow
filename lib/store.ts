@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { WorkflowNode, WorkflowEdge, ExecutionHistoryEntry, Workflow } from './types';
+import { WorkflowNode, WorkflowEdge, ExecutionHistoryEntry, Workflow } from '@/types/types';
 interface WorkflowState {
   // Workflow data
   currentWorkflow: Workflow | null;
@@ -13,6 +13,7 @@ interface WorkflowState {
     setCurrentWorkflow: (workflow: Workflow | null) => void;
   selectedNodeId: string | null;
   selectedNodeIds: string[];
+  setSelectedNodeId: (nodeId: string | null) => void;
   isExecuting: boolean;
   executionLogs: Array<{
     nodeId: string;
@@ -83,7 +84,11 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
   setWorkflowId: (id: string) => set({ workflowId: id }),
   setWorkflowName: (name: string) => set({ workflowName: name }),
   setWorkflowDescription: (description: string) => set({ workflowDescription: description }),
-
+ setSelectedNodeId: (id: string | null) =>
+  set({
+    selectedNodeId: id,
+    selectedNodeIds: id ? [id] : [],
+  }),
   setNodes: (nodes: WorkflowNode[]) => set({ nodes }),
   setEdges: (edges: WorkflowEdge[]) => set({ edges }),
 

@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { ChevronDown, Play, Loader } from "lucide-react";
+ import { isValidTypedConnection } from "@/lib/connectionValidation";
+import { NodeCategory, OutputType } from "@/types/types";
 
 const MODELS = [
   { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
@@ -162,21 +164,28 @@ export function LLMNode({ data, selected, id }: any) {
       )}
 
       {/* Input Handles */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="system_prompt"
-        style={{ top: "30%" }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="user_message"
-        style={{ top: "60%" }}
-      />
+
+{data.definition?.inputs?.map((input:any, idx:any) => (
+  <Handle
+    key={input.id}
+    type="target"
+    position={Position.Left}
+    id={`input:${input.id}`}
+    style={{ top: `${25 + idx * 25}%` }}
+    isValidConnection={isValidTypedConnection}
+  />
+))}
 
       {/* Output Handle */}
-      <Handle type="source" position={Position.Right} id="output" />
+    {data.definition?.outputs?.map((output:OutputType, idx:number) => (
+  <Handle
+    key={output.id}
+    type="source"
+    position={Position.Right}
+    id={`output:${output.id}`}
+    style={{ top: `${50 + idx * 20}%` }}
+  />
+))}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { ReactFlow } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Loader } from 'lucide-react';
 import { CompleteWorkflowEditor } from '@/components/workflow/CompleteWorkflowEditor';
@@ -85,7 +85,7 @@ export default function EditorPage() {
 //   }
 
   const workflow={
-    id:"23432423",
+    id:"cmof7ktqp0001usy41tm0mlll",
     name:"fsdjflksdjf",
     description:"fkjsdlfj",
     data:{
@@ -95,14 +95,14 @@ export default function EditorPage() {
   }
 
   return (
-    <ReactFlow>
+    <ReactFlowProvider >
       <CompleteWorkflowEditor
         workflowId={workflow.id}
         workflowName={workflow.name}
         workflowDescription={workflow.description}
         initialNodes={workflow.data?.nodes || []}
         initialEdges={workflow.data?.edges || []}
-      />
-    </ReactFlow>
+      /> 
+    </ReactFlowProvider>
   );
 }

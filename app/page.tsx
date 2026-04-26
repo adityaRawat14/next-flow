@@ -8,8 +8,10 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("he")
-  router.replace("/app/home")
+    const timer = setTimeout(() => {
+      router.replace("/app/home");
+    }, 0);
+    return () => clearTimeout(timer);
   }, [router]);
 
   return (
