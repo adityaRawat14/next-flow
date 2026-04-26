@@ -1,3 +1,4 @@
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from 'next/server';
 import { WORKFLOW_TEMPLATES, getTemplate, getTemplatesByCategory } from '@/lib/templates';
 
