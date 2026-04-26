@@ -96,6 +96,7 @@ export default function EditorPage() {
 
   return (
     <ReactFlowProvider >
+      
       <CompleteWorkflowEditor
         workflowId={workflow.id}
         workflowName={workflow.name}

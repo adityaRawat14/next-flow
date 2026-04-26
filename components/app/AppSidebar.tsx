@@ -18,7 +18,7 @@ export default function AppSidebar() {
 const { redirectToSignIn ,} = useClerk();
   return (
     <div
-      className={`bg-[#000000] text-white transition-all pb-14 duration-300 ease-in-out ${
+      className={`bg-[#000000] text-white transition-all z-50 pb-14 duration-300 ease-in-out ${
         isCollapsed ? "w-10" : "w-52"
       } flex flex-col border-r border-zinc-800`}
     >

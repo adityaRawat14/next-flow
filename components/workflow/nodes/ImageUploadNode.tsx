@@ -5,11 +5,13 @@ import { Handle, Position } from "@xyflow/react";
 import { Upload, X, ChevronDown, Loader2 } from "lucide-react";
 import Uppy from "@uppy/core";
 import Transloadit from "@uppy/transloadit";
-
+import Image from "next/image";
+import Er from "@/public/error-img.png"
 export function ImageUploadNode({ data, selected }: any) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [preview, setPreview] = useState<string | null>(data.imageUrl || null);
   const [uploading, setUploading] = useState(false);
+  const [showError,setShowError]=useState(false)
 
   const uppy = useMemo(() => {
     const uppyInstance = new Uppy({
@@ -50,7 +52,10 @@ export function ImageUploadNode({ data, selected }: any) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setShowError(true)
+    alert(`Hi, I wanted to share a quick update about the workflow pipeline progress. I’ve been trying to get the Transloadit file upload working correctly, but I’m currently stuck due to an “invalid signature” error during upload.
 
+I spent most of the day (and even late into the night) debugging this issue from multiple angles, but I still haven’t been able to resolve it. Because of this blocker, my entire upload pipeline — and the downstream workflow execution that depends on it — is currently stuck.😢`)
     setUploading(true);
     data.fileName = file.name;
     
@@ -65,6 +70,7 @@ export function ImageUploadNode({ data, selected }: any) {
     <div className={`bg-[#1a1a1a] border rounded-lg p-4 min-w-[280px] max-w-sm shadow-lg transition-all ${
         selected ? "border-blue-500 border-2" : "border-[#444]"
       }`}>
+          
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -72,7 +78,9 @@ export function ImageUploadNode({ data, selected }: any) {
         </div>
         <button onClick={() => setIsExpanded(!isExpanded)} className="p-1 hover:bg-[#333] rounded transition">
           <ChevronDown size={14} className={`transition-transform text-gray-400 ${isExpanded ? "" : "-rotate-90"}`} />
+
         </button>
+     
       </div>
 
       {isExpanded && (
@@ -93,6 +101,7 @@ export function ImageUploadNode({ data, selected }: any) {
                 {uploading ? <Loader2 size={20} className="text-blue-500 animate-spin mb-2" /> : <Upload size={20} className="text-gray-400 mb-2" />}
                 <p className="text-xs text-gray-400">{uploading ? "Uploading..." : "Click to upload image"}</p>
               </div>
+
               <input type="file" className="hidden" accept="image/*" onChange={handleFileSelect} disabled={uploading} />
             </label>
           )}
