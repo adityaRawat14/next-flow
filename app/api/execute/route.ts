@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "@/lib/db";
-import { executeLLMTask, cropImageTask, extractFrameTask } from "@/lib/trigger";
 
 interface ExecutionRequest {
   workflowId: string;
@@ -14,6 +13,12 @@ interface ExecutionRequest {
 }
 
 export async function POST(request: NextRequest) {
+  export async function POST(request: NextRequest) {
+  const {
+    executeLLMTask,
+    cropImageTask,
+    extractFrameTask,
+  } = await import("@/lib/trigger");
   try {
     const { userId } = await auth();
 
