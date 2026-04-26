@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String             @id @default(cuid())
+  clerkId   String             @unique
+  email     String             @unique
+  name      String?
+  workflows Workflow[]
+  history   ExecutionHistory[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model Workflow {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String             @default("Untitled Workflow")
+  description String?
+  nodes       Node[]
+  edges       Edge[]
+  history     ExecutionHistory[]
+
+  // For JSON export/import
+  data Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Node {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  // React Flow node data
+  type     String // 'text', 'image_upload', 'video_upload', 'llm', 'crop_image', 'extract_frame'
+  data     Json // Node configuration data
+  position Json // x, y coordinates
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workflowId])
+}
+
+model Edge {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  source       String // source node id
+  target       String // target node id
+  sourceHandle String?
+  targetHandle String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workflowId])
+}
+
+model ExecutionHistory {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status String // 'success', 'failed', 'running', 'partial'
+  scope  String // 'full', 'partial', 'single'
+
+  // For partial/single execution
+  executedNodeIds String[] @default([])
+
+  nodeResults Json // Map of nodeId -> execution result
+  nodeErrors  Json // Map of nodeId -> error message
+  nodeLogs    Json // Map of nodeId -> execution logs
+
+  startTime DateTime
+  endTime   DateTime?
+  duration  Int? // milliseconds
+
+  // For Trigger.dev task tracking
+  triggerTaskIds Json? // Map of nodeId -> trigger task id
+
+  createdAt DateTime @default(now())
+
+  @@index([workflowId])
+  @@index([userId])
+  @@index([createdAt])
+}
